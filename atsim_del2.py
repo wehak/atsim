@@ -20,7 +20,7 @@ sti_til_kodetabeller = r"C:\Users\weyhak\Desktop\temp\grorud"
 
 # Input 2:  sti til fil med definisjon av segmener 
 #           (default er samme sted somi del 1)
-segmentfil = "definer_segmenter.xlsx"
+segmentfil = r"C:\Users\weyhak\OneDrive - Bane NOR\Dokumenter\Tools\Python\definer_segmenter_test.xlsx"
 
 # Output:   sti til filen som skal lagres. Hvis ingen sti er angitt lagres fila
 #           i samme mappe scriptet kjøres fra
@@ -41,11 +41,11 @@ segmenter = set([bgruppe.sim_segment for ktab in alle_ark.alle_ktab for bgruppe 
 to_pd = []
 for ktab in alle_ark.alle_ktab:
     for bgruppe in ktab.balise_group_obj_list:
-        print(bgruppe.id1 + bgruppe.id2)
         for balise in bgruppe.baliser:
             to_pd.append({
                     "Retning": bgruppe.retning,
                     "Sign./Type": bgruppe.sign_type,
+                    "Type": bgruppe.type,
                     "ID_sted": bgruppe.id1, 
                     "ID_type": bgruppe.id2, 
                     "Rang": balise.rang, 
@@ -64,6 +64,7 @@ ut_df = pd.DataFrame(to_pd)
 ut_df = ut_df[[
         "Retning",
         "Sign./Type",
+        "Type",
         "ID_sted", 
         "ID_type", 
         "Rang", 
@@ -78,6 +79,7 @@ ut_df = ut_df[[
         ]]
 
 # output
-print(ut_df)
-ut_df.to_excel(baliselistefil, index = False)
+print(ut_df.sort_values(by = ["ID_sted", "ID_type"]))
+#print(ut_df[["ID_sted", "ID_type", "KM_prosjektert"]].sort_values(by = ["ID_sted", "ID_type"]))
+ut_df.sort_values(by = ["ID_sted", "ID_type"]).to_excel(baliselistefil, index = False)
 

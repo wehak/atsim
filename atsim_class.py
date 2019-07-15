@@ -118,14 +118,13 @@ class Kodetabell:
                     self.wb_sheet.cell_value(group_row,2), # id1
                     self.wb_sheet.cell_value(group_row,3), # id2
                     self.__clean_KM(self.wb_sheet.cell_value(group_row,4)), # km
-                    self.wb_sheet.cell_value(5,0), # retning
+                    self.wb_sheet.cell_value(5,0), # ktab retning
                     self.wb_sheet.cell_value(50,90), # s_nr
                     group_row, # første rad nr
                     self.__last_row(group_row) # siste rad nr
                 ))
 
     # finner alle definerte tilstander for en balisegruppe
-    # returnerer en liste over tilstander, strukturert for pandas som en dict
     def __definer_tilstander(self, group_obj):        
         # search_col, returnerer en liste for hver kolonne        
         kolonne_dict = {}
@@ -160,38 +159,43 @@ class Kodetabell:
             tilstand_list.append(tilstand_linje)
         group_obj.tilstander = tilstand_list
         
-#        if __name__ == "__main__":
-#            print(group_obj.id1 + group_obj.id2)
+        # lager Balise objekt med info om koding
         for litra in ["P", "A", "B", "C"]:
             if litra + "X" in kolonne_dict:
                 group_obj.baliser.append(Balise(
-                        self.__balise_km(group_obj, litra),
                         litra,
                         kolonne_dict[litra + "X"],
                         kolonne_dict[litra + "Y"],
                         kolonne_dict[litra + "Z"]
                         ))
-#        if __name__ == "__main__":
-#            print(group_obj.baliser)
-        
-        return group_obj
-        
-    # setter KM på hver individuelle balise
-    def __balise_km(self, group_obj, rang):
-        if ("A" in group_obj.retning or "C" in group_obj.retning):
+                
+        # sette km på balisene        
+        if ("A" in group_obj.retning):
             retning = 1
         else:
             retning = -1
-        if rang is "P":
-            return group_obj.km - 3 * retning
-        else:
-            for i, bokstav in enumerate(["A", "B", "C"]):
-                if bokstav == rang:
-                    return group_obj.km + 3 * i * retning
-    
+            
+        offset = 8 # hvor mange meter fra hsign til første balise
+        
+        for balise in group_obj.baliser:
+            if group_obj.type == "H.sign":
+                egen_gruppe = [balise.rang for balise in group_obj.baliser]
+                for i, bokstav in enumerate(egen_gruppe[::-1]):
+                    if bokstav == balise.rang:
+                        balise.km = group_obj.km + (offset + 3 * i) * retning
+            else:                    
+                if balise.rang is "P":
+                    balise.km = group_obj.km - 3 * retning
+                else:
+                    for i, bokstav in enumerate(["A", "B", "C"]):
+                        if bokstav == balise.rang:
+                            balise.km = group_obj.km + 3 * i * retning
+        # def slutt
+        return group_obj
     
     # leter i kommentarfeltet etter gyldige koderbenevninger, returnerer liste
     def __tell_kodere(self, group_obj):
+        
         # gyldige navn på kodere:
         koder_benevning = (
         "FSK[1-9]*"
@@ -204,6 +208,7 @@ class Kodetabell:
         "|REP\.*K[1-9]*"
         "|RSK[1-9]*"
         )
+        
         koder_list = []        
         for row in range(group_obj.first_row, group_obj.last_row + 1):
             kommentar_celle = self.wb_sheet.cell_value(row, col_name("CA"))
@@ -286,12 +291,12 @@ class Kodetabell:
 
 
 class Balisegruppe:
-    def __init__(self, sign_type, id1, id2, km, retning, s_nr, first_row, last_row):
+    def __init__(self, sign_type, id1, id2, km, ktab_retning, s_nr, first_row, last_row):
         self.sign_type = sign_type
         self.id1 = id1
         self.id2 = id2
         self.km = km
-        self.retning = retning
+        self.ktab_retning = ktab_retning
         self.s_nr = s_nr
         self.first_row = first_row
         self.last_row = last_row
@@ -299,18 +304,51 @@ class Balisegruppe:
         self.kodere = []
         self.sim_segment = None # segment dersom den skal brukes i ATC sim
         self.baliser = []
+        
+        self.finn_retning()
+        self.finn_type()
+        
+        # setter retning avhengig av om id2 er odde er partall
+    def finn_retning(self):
+        m = re.match("\d+", self.id2[::-1])
+        nr = int(m.group(0)[::-1])
+        if nr % 2 == 0:
+            self.retning = "B"
+        else:
+            self.retning = "A"            
+
+    # klassifiserer etter type balisegruppe        
+    def finn_type(self):
+        # https://trv.banenor.no/wiki/Signal/Prosjektering/ATC#Baliseidentitet
+        tabell_12 = {
+                "H.sign": ["_", "M", "O", "S", "Y", "Æ", "Å", "L", "N", "P", "T", "X", "Ø"],
+                "D.sign": ["m", "o", "s", "y", "æ", "å", "l", "n", "p", "t", "x", "ø"],
+                "F.sign": ["F"],
+                "FF": ["Z"],
+                "Rep.": ["R", "U", "V", "W"],
+                "L": ["L"],
+                "SVG/RVG": ["V"],
+                "SH": ["S"],
+                "H/H(K1)/H(K2)": ["H"],
+                "ERH/EH/SEH": ["E"],
+                "GMD/GMO/HG/BU/SU": ["G"]
+                }
+        for key in tabell_12:
+            if self.id2[0] in tabell_12[key] or self.id2[1] in tabell_12[key]:
+                self.type = key
+        
     
     def __str__(self):
         self_str = "{}\t{} {}\t{}\t" .format(self.sign_type, self.id1, self.id2, self.km)
         return self_str
 
 class Balise:
-    def __init__(self, km, rang, x_reg, y_reg, z_reg):
-        self.km = km
+    def __init__(self, rang, x_reg, y_reg, z_reg):
         self.rang = rang # P, A, B, C eller N-balise
         self.x_reg = x_reg # X-ord
         self.y_reg = y_reg
         self.z_reg = z_reg
+        self.km = 0
         
     def __str__(self):
 #        line_1 = "{0}X\t{0}Y\t{0}Z" .format(
