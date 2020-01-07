@@ -438,7 +438,7 @@ class PD_table:
         
 if __name__ == "__main__":
     # Mappe kodetabeller hentes i fra
-    mypath = r"C:\Users\weyhak\Desktop\temp\grorud"
+    mypath = r"C:\Users\weyhak\Desktop\temp\sand"
     
     # Leser kodetabeller
     alle_ark = Baliseoversikt()

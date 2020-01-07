@@ -16,11 +16,11 @@ from atsim_func import rens_kodeord
 
 
 # Input 1 : mappesti kodetabeller hentes i fra. må være samme som i del 1
-sti_til_kodetabeller = r"C:\Users\weyhak\Desktop\temp\grorud"
+sti_til_kodetabeller = r"C:\Users\weyhak\Desktop\temp\sand"
 
 # Input 2:  sti til fil med definisjon av segmener 
 #           (default er samme sted somi del 1)
-segmentfil = r"C:\Users\weyhak\OneDrive - Bane NOR\Dokumenter\Tools\Python\definer_segmenter_test.xlsx"
+segmentfil = r"C:\Users\weyhak\OneDrive - Bane NOR\Dokumenter\GitHub\atsim\definer_segmenter.xlsx"
 
 # Output:   sti til filen som skal lagres. Hvis ingen sti er angitt lagres fila
 #           i samme mappe scriptet kjøres fra

@@ -17,7 +17,7 @@ from atsim_class import Baliseoversikt
 from atsim_func import definer_segmenter
 
 # Input: mappe kodetabeller hentes i fra
-sti_til_kodetabeller = r"C:\Users\weyhak\Desktop\temp\grorud"
+sti_til_kodetabeller = r"C:\Users\weyhak\Desktop\temp\sand"
 
 # Output: filnavn og plassering
 filnavn = r"definer_segmenter.xlsx"
