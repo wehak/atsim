@@ -2,7 +2,7 @@
 """
 Created on Thu Jul  4 13:55:16 2019
 
-@author: WEYHAK
+@author: Håkon Weydahl (weyhak@banenor.no)
 
 Inneholder klasser som kan ta en mengde kodetabeller og hente ut informasjonen. 
 Bibliotektet som snakker med excel (xlrd) fungerer kun på .xls-filer. 
@@ -142,7 +142,7 @@ class Kodetabell:
         for row in range(row_span):            
             tilstand_linje = []
             for key in kolonne_dict:
-#                print(row, key, kolonne_dict[key][row]) # debugging
+                # print(row, key, kolonne_dict[key][row]) # debugging
                 tilstand_linje.append({key : kolonne_dict[key][row]})
             togvei_celle = self.wb_sheet.cell_value(
                     group_obj.first_row + row,
@@ -233,7 +233,7 @@ class Kodetabell:
                     self.wb_sheet.cell_value(row, col) # les kode fra celle
                     )
         else: # hvis ikke innhold
-#            row_code.append(None) # returner liste med None per rad
+            # row_code.append(None) # returner liste med None per rad
             return None # returner None i stedet for en liste
         
         if group_obj.first_row == group_obj.last_row:
@@ -435,6 +435,41 @@ class PD_table:
         
     def print_df(self):
         print(self.balise_df)
+
+
+# Klasse  brukes for å skrive baliseinfo til XML
+class XMLbalise:
+    def __init__(self, id1, id2, rang, km, x_reg, y_reg, z_reg):
+        self.id1 = str(id1)
+        self.id2 = str(id2)
+        self.rang = str(rang) # P, A, B, C eller N-balise
+        self.km = float(km)
+        self.x_reg = int(x_reg) # X-ord
+        self.y_reg = int(y_reg)
+        self.z_reg = int(z_reg)
+    
+    def toXML(self, rootElement):
+        import xml.etree.ElementTree as ET
+        baliseXML = ET.SubElement(rootElement, "BaliseXML")
+        ET.SubElement(baliseXML, "IdXML").text = self.id1 + self.id2 + self.rang
+        ET.SubElement(baliseXML, "StartVertexXML").text = "0.0, 0.0, " + str(self.km) # KM siste ledd
+        ET.SubElement(baliseXML, "OffsetVertexXML").text = "0.0, 0.0, 0.0"
+        ET.SubElement(baliseXML, "DirectionXML").text = "1"
+        ET.SubElement(baliseXML, "FileNameXML").text = "balise.ac"
+        ET.SubElement(baliseXML, "KodeXML").text = "{0}, {1}, {2}" .format(
+            int(self.x_reg),
+            int(self.y_reg),
+            int(self.z_reg)
+        )
+    
+    def __str__(self):
+        return ("{0}\tX: {1}\tY: {2}\tZ: {3}" .format(
+            self.id1 + self.id2 + self.rang,
+            # self.id2,
+            self.x_reg, 
+            self.y_reg, 
+            self.z_reg
+            ))
         
 if __name__ == "__main__":
     # Mappe kodetabeller hentes i fra

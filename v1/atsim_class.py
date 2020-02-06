@@ -2,7 +2,7 @@
 """
 Created on Thu Jul  4 13:55:16 2019
 
-@author: WEYHAK
+@author: Håkon Weydahl (weyhak@banenor.no)
 
 Inneholder klasser som kan ta en mengde kodetabeller og hente ut informasjonen. 
 Bibliotektet som snakker med excel (xlrd) fungerer kun på .xls-filer. 

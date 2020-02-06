@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<TCO-balises xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+
+<TrackConnectedObjectListXML>
+  <BaliseXML>
+    <IdXML>defaultid</IdXML>
+    <StartVertexXML>0.19, 0.0, 200.0</StartVertexXML>
+    <OffsetVertexXML>0.0, 0.0, 0.0</OffsetVertexXML>
+    <DirectionXML>1</DirectionXML>
+    <FileNameXML>balise.ac</FileNameXML>
+    <KodeXML>7,1,0</KodeXML>
+  </BaliseXML>
+  <BaliseXML>
+    <IdXML>defaultid</IdXML>
+    <StartVertexXML>-0.07, 0.0, 203.0</StartVertexXML>
+    <OffsetVertexXML>0.0, 0.0, 0.0</OffsetVertexXML>
+    <DirectionXML>1</DirectionXML>
+    <FileNameXML>balise.ac</FileNameXML>
+    <KodeXML>7, 14, 14</KodeXML>
+  </BaliseXML>
+</TrackConnectedObjectListXML>
+
+</TCO-balises>
