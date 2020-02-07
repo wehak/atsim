@@ -16,11 +16,11 @@ from atsim_func import skrivBaliseliste
 
 
 # Mappe hvor kodetabeller finnes
-sti_til_kodetabeller = r"C:\Users\weyhak\Desktop\temp\sand"
+sti_til_kodetabeller = r"C:\Users\weyhak\Desktop\temp\lysaker1"
 
 # Leser kodetabeller
 alle_ark = Baliseoversikt()
 alle_ark.ny_mappe(sti_til_kodetabeller)
 
 # Lager excelark
-skrivBaliseliste(alle_ark, "baliser test.xlsx")
+skrivBaliseliste(alle_ark, "lysaker1.xlsx")

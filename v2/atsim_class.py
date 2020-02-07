@@ -41,7 +41,7 @@ class Baliseoversikt:
         self.alle_ktab = []
         
     def ny_mappe(self, folder_path):
-        for file in self.__get_file_list(folder_path):
+        for file in self.__getXLSfileList(folder_path):
             self.alle_ktab.append(Kodetabell(file))
             
     # hvordan oversikten printes
@@ -51,7 +51,7 @@ class Baliseoversikt:
         return ""
 
     # Finner alle .xls filer i angitt mappe
-    def __get_file_list(self, folder_path):
+    def __getXLSfileList(self, folder_path):
         xls_files = []
         (_, _, filenames) = next(os.walk(folder_path))
     
@@ -109,8 +109,8 @@ class Kodetabell:
             # Lager balise objekt med __init__ info 
             if (self.wb_sheet.cell(group_row,1).ctype==0) or \
             (self.wb_sheet.cell(group_row,2).ctype==0 and
-             self.wb_sheet.cell(group_row,3).ctype==0 and
-             self.wb_sheet.cell(group_row,4).ctype==0):
+             self.wb_sheet.cell(group_row,3).ctype==0):# and
+            #  self.wb_sheet.cell(group_row,4).ctype==0):
                 continue
             else:
                 self.balise_group_obj_list.append(Balisegruppe(
@@ -311,11 +311,14 @@ class Balisegruppe:
         # setter retning avhengig av om id2 er odde er partall
     def finn_retning(self):
         m = re.match("\d+", self.id2[::-1])
-        nr = int(m.group(0)[::-1])
-        if nr % 2 == 0:
-            self.retning = "B"
-        else:
-            self.retning = "A"            
+        try:
+            nr = int(m.group(0)[::-1])
+            if nr % 2 == 0:
+                self.retning = "B"
+            else:
+                self.retning = "A"
+        except:
+            self.retning = "?"
 
     # klassifiserer etter type balisegruppe        
     def finn_type(self):
