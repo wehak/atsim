@@ -171,11 +171,11 @@ class Kodetabell:
                 
         # sette km på balisene        
         if ("A" in group_obj.retning):
-            retning = 1
-        else:
             retning = -1
+        else:
+            retning = 1
             
-        offset = 8 # hvor mange meter fra hsign til første balise
+        offset = 6 # hvor mange meter fra hsign til første balise
         
         for balise in group_obj.baliser:
             if group_obj.type == "H.sign":
@@ -183,13 +183,17 @@ class Kodetabell:
                 for i, bokstav in enumerate(egen_gruppe[::-1]):
                     if bokstav == balise.rang:
                         balise.km = group_obj.km + (offset + 3 * i) * retning
-            else:                    
-                if balise.rang is "P":
-                    balise.km = group_obj.km - 3 * retning
-                else:
-                    for i, bokstav in enumerate(["A", "B", "C"]):
-                        if bokstav == balise.rang:
-                            balise.km = group_obj.km + 3 * i * retning
+            else:
+                egen_gruppe = [balise.rang for balise in group_obj.baliser]
+                for i, bokstav in enumerate(egen_gruppe[::-1]):
+                    if bokstav == balise.rang:
+                        balise.km = group_obj.km + 3 * i * retning                    
+                # if balise.rang is "P":
+                #     balise.km = group_obj.km - 3 * retning
+                # else:
+                #     for i, bokstav in enumerate(["A", "B", "C"]):
+                #         if bokstav == balise.rang:
+                #             balise.km = group_obj.km + 3 * i * retning
         # def slutt
         return group_obj
     
@@ -277,7 +281,8 @@ class Kodetabell:
     
     # fjerner rusk fra KM og returnerer en int
     def __clean_KM(self, KM_str):
-        KM_str = KM_str.replace(",","").replace(".","")
+        from re import findall
+        KM_str = "".join(findall("[0-9]", KM_str))
         if KM_str.isdigit():
             return int(KM_str)
         else:
@@ -442,7 +447,9 @@ class PD_table:
 
 # Klasse  brukes for å skrive baliseinfo til XML
 class XMLbalise:
-    def __init__(self, id1, id2, rang, km, x_reg, y_reg, z_reg):
+    def __init__(self, signType, id1, id2, rang, km, x_reg, y_reg, z_reg):
+        # print(km)
+        self.signType = str(signType)
         self.id1 = str(id1)
         self.id2 = str(id2)
         self.rang = str(rang) # P, A, B, C eller N-balise
@@ -452,19 +459,35 @@ class XMLbalise:
         self.z_reg = int(z_reg)
     
     def toXML(self, rootElement):
-        import xml.etree.ElementTree as ET
-        baliseXML = ET.SubElement(rootElement, "BaliseXML")
-        ET.SubElement(baliseXML, "IdXML").text = self.id1 + self.id2 + self.rang
-        ET.SubElement(baliseXML, "StartVertexXML").text = "0.0, 0.0, " + str(self.km) # KM siste ledd
-        ET.SubElement(baliseXML, "OffsetVertexXML").text = "0.0, 0.0, 0.0"
-        ET.SubElement(baliseXML, "DirectionXML").text = "1"
-        ET.SubElement(baliseXML, "FileNameXML").text = "balise.ac"
-        ET.SubElement(baliseXML, "KodeXML").text = "{0}, {1}, {2}" .format(
+        # import xml.etree.ElementTree as ET
+        import xml.etree.ElementTree as etree
+
+        # Lager skilt ved alle A-baliser
+        if self.rang == "A":
+            baliseXML = etree.SubElement(rootElement, "IdBoardXML")
+            etree.SubElement(baliseXML, "IdXML").text = "defaultid" #self.id1 + self.id2 + self.rang
+            etree.SubElement(baliseXML, "StartVertexXML").text = "0.0, 0.0, " + str(self.km) # KM siste ledd
+            etree.SubElement(baliseXML, "OffsetVertexXML").text = "-3.0, 2.35, 0.0"
+            etree.SubElement(baliseXML, "DirectionXML").text = "1"
+            etree.SubElement(baliseXML, "FileNameXML").text = "no content"
+            etree.SubElement(baliseXML, "Line1XML").text = self.__addBlanks(self.signType)
+            etree.SubElement(baliseXML, "Line2XML").text = self.__addBlanks(self.id1)
+            etree.SubElement(baliseXML, "Line3XML").text = self.__addBlanks(self.id2)
+            etree.SubElement(baliseXML, "TypeXML").text = "no content"
+
+        # Lager liste over alle baliser
+        baliseXML = etree.SubElement(rootElement, "BaliseXML")
+        etree.SubElement(baliseXML, "IdXML").text = "defaultid"
+        etree.SubElement(baliseXML, "StartVertexXML").text = "0.0, 0.0, " + str(self.km) # KM siste ledd
+        etree.SubElement(baliseXML, "OffsetVertexXML").text = "0.0, 0.0, 0.0"
+        etree.SubElement(baliseXML, "DirectionXML").text = "1"
+        etree.SubElement(baliseXML, "FileNameXML").text = "balise.ac"
+        etree.SubElement(baliseXML, "KodeXML").text = "{0}, {1}, {2}" .format(
             int(self.x_reg),
             int(self.y_reg),
             int(self.z_reg)
         )
-    
+            
     def __str__(self):
         return ("{0}\tX: {1}\tY: {2}\tZ: {3}" .format(
             self.id1 + self.id2 + self.rang,
@@ -473,6 +496,13 @@ class XMLbalise:
             self.y_reg, 
             self.z_reg
             ))
+    
+    def __addBlanks(self, someStr):
+        blanks = "     "
+        if len(someStr) >= 5:
+            return someStr[:5]
+        else:
+            return blanks[:(5-len(someStr))] + someStr
         
 if __name__ == "__main__":
     # Mappe kodetabeller hentes i fra
@@ -482,3 +512,4 @@ if __name__ == "__main__":
     alle_ark = Baliseoversikt()
     alle_ark.ny_mappe(mypath)
     print(alle_ark)
+    
