@@ -447,8 +447,9 @@ class PD_table:
 
 # Klasse  brukes for å skrive baliseinfo til XML
 class XMLbalise:
-    def __init__(self, signType, id1, id2, rang, km, x_reg, y_reg, z_reg):
+    def __init__(self, retning, signType, id1, id2, rang, km, x_reg, y_reg, z_reg):
         # print(km)
+        self.retning = str(retning)
         self.signType = str(signType)
         self.id1 = str(id1)
         self.id2 = str(id2)
@@ -463,17 +464,17 @@ class XMLbalise:
         import xml.etree.ElementTree as etree
 
         # Lager skilt ved alle A-baliser
-        if self.rang == "A":
-            baliseXML = etree.SubElement(rootElement, "IdBoardXML")
-            etree.SubElement(baliseXML, "IdXML").text = "defaultid" #self.id1 + self.id2 + self.rang
-            etree.SubElement(baliseXML, "StartVertexXML").text = "0.0, 0.0, " + str(self.km) # KM siste ledd
-            etree.SubElement(baliseXML, "OffsetVertexXML").text = "-3.0, 2.35, 0.0"
-            etree.SubElement(baliseXML, "DirectionXML").text = "1"
-            etree.SubElement(baliseXML, "FileNameXML").text = "no content"
-            etree.SubElement(baliseXML, "Line1XML").text = self.__addBlanks(self.signType)
-            etree.SubElement(baliseXML, "Line2XML").text = self.__addBlanks(self.id1)
-            etree.SubElement(baliseXML, "Line3XML").text = self.__addBlanks(self.id2)
-            etree.SubElement(baliseXML, "TypeXML").text = "no content"
+        # if self.rang == "A":
+        #     baliseXML = etree.SubElement(rootElement, "IdBoardXML")
+        #     etree.SubElement(baliseXML, "IdXML").text = "defaultid" #self.id1 + self.id2 + self.rang
+        #     etree.SubElement(baliseXML, "StartVertexXML").text = "0.0, 0.0, " + str(self.km) # KM siste ledd
+        #     etree.SubElement(baliseXML, "OffsetVertexXML").text = "-3.0, 2.35, 0.0"
+        #     etree.SubElement(baliseXML, "DirectionXML").text = "1"
+        #     etree.SubElement(baliseXML, "FileNameXML").text = "no content"
+        #     etree.SubElement(baliseXML, "Line1XML").text = self.__addBlanks(self.signType)
+        #     etree.SubElement(baliseXML, "Line2XML").text = self.__addBlanks(self.id1)
+        #     etree.SubElement(baliseXML, "Line3XML").text = self.__addBlanks(self.id2)
+        #     etree.SubElement(baliseXML, "TypeXML").text = "no content"
 
         # Lager liste over alle baliser
         baliseXML = etree.SubElement(rootElement, "BaliseXML")

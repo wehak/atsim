@@ -282,6 +282,7 @@ def createXML(excelFilename):
 
     # Navn på kolonner som skal leses inn fra excelark
     searchPatterns = [
+        "Retning",
         "Sign./Type",
         "ID_sted",
         "ID_type",
@@ -316,6 +317,7 @@ def createXML(excelFilename):
     for i in range(1, ws.nrows):
         baliser.append(
             XMLbalise(
+                ws.cell_value(i, headerColumnDict["Retning"]),
                 ws.cell_value(i, headerColumnDict["Sign./Type"]),
                 ws.cell_value(i, headerColumnDict["ID_sted"]),
                 ws.cell_value(i, headerColumnDict["ID_type"]),
@@ -329,16 +331,18 @@ def createXML(excelFilename):
 
 
     # Første tag
-    root = etree.Element("TCO-balises")
-    root.set("xmlns:xsi", "http://www.w3.org/2001/XMLSchema-instance")
-    TCOlist = etree.SubElement(root, "TrackConnectedObjectListXML")
+    # root = etree.Element("TCO-balises")
+    # root.set("xmlns:xsi", "http://www.w3.org/2001/XMLSchema-instance")
+    # TCOlist = etree.SubElement(root, "TrackConnectedObjectListXML")
+    TCOlist = etree.Element("TrackConnectedObjectListXML")
 
     # Start KM
-    startKM = etree.SubElement(TCOlist, "KmInfoXML")
-    etree.SubElement(startKM, "KmOffsetXML").text = "0"
+    # startKM = etree.SubElement(TCOlist, "KmInfoXML")
+    # etree.SubElement(startKM, "KmOffsetXML").text = "0"
 
     for balise in baliser:
         balise.toXML(TCOlist)
 
-    tree = etree.ElementTree(root)
+    # tree = etree.ElementTree(root)
+    tree = etree.ElementTree(TCOlist)
     tree.write(xmlFilename, encoding="UTF-8", xml_declaration=True, default_namespace=None, method="xml")
