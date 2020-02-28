@@ -282,11 +282,17 @@ class Kodetabell:
     # fjerner rusk fra KM og returnerer en int
     def __clean_KM(self, KM_str):
         from re import findall
-        KM_str = "".join(findall("[0-9]", KM_str))
+        KM_str = str(KM_str)
         if KM_str.isdigit():
-            return int(KM_str)
+            return KM_str
         else:
-            return -1.0
+            try:
+                KM_str = "".join(findall("[0-9]", KM_str))
+                return int(KM_str)
+            except:
+                print(KM_str)
+                print(findall("[0-9]", KM_str))
+                return -1.0
     
     # hvordan arket printes
     def __str__(self):
@@ -333,9 +339,10 @@ class Balisegruppe:
                 "D.sign": ["m", "o", "s", "y", "æ", "å", "l", "n", "p", "t", "x", "ø"],
                 "F.sign": ["F"],
                 "FF": ["Z"],
-                "Rep.": ["R", "U", "V", "W"],
+                # "Rep.": ["R", "U", "V", "W"],
+                "Rep.": ["R", "U", "W"], # V er for SVG
                 "L": ["L"],
-                "SVG/RVG": ["V"],
+                "SVG/RVG": ["V", "v"],
                 "SH": ["S"],
                 "H/H(K1)/H(K2)": ["H"],
                 "ERH/EH/SEH": ["E"],
@@ -512,5 +519,8 @@ if __name__ == "__main__":
     # Leser kodetabeller
     alle_ark = Baliseoversikt()
     alle_ark.ny_mappe(mypath)
-    print(alle_ark)
+
+    balisegrupper_df = PD_table(alle_ark.alle_ktab)
+    print(balisegrupper_df.balise_df)
+    # balisegrupper_df.balise_df.to_excel("oslo_s.xlsx")
     

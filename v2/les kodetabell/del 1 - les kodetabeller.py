@@ -11,16 +11,15 @@ Finner alle kodertabeller i "sti_til_kodetabeller" og forsøker å lage en samle
 
 
 from atsim_class import Baliseoversikt
-#from atsim_func import rens_kodeord
 from atsim_func import skrivBaliseliste
 
 
 # Mappe hvor kodetabeller finnes
-sti_til_kodetabeller = r"C:\Users\weyhak\OneDrive - Bane NOR\Dokumenter\DIV\lysaker sim\kodetabeller\TTG2"
+sti_til_kodetabeller = r"C:\Users\weyhak\Desktop\temp\sand"
 
 # Leser kodetabeller
 alle_ark = Baliseoversikt()
 alle_ark.ny_mappe(sti_til_kodetabeller)
 
 # Lager excelark
-skrivBaliseliste(alle_ark, "lysaker_ttg2.xlsx")
+skrivBaliseliste(alle_ark, "baliser.xlsx")
