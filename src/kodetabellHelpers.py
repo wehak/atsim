@@ -4,12 +4,8 @@ Created on Thu Jul  4 13:55:16 2019
 
 @author: Håkon Weydahl (weyhak@banenor.no)
 
-Inneholder klasser som kan ta en mengde kodetabeller og hente ut informasjonen. 
-Bibliotektet som snakker med excel (xlrd) fungerer kun på .xls-filer. 
-Dersom kodetabellen er i det nyere .xlsx-formatet må kodetabellen lagres på
-nytt i gammelt format.
+Inneholder klasser som kan ta en mengde kodetabeller og hente ut informasjonen:
 
-Objekter:
     -   Baliseoversikt(): "Permen" med alle kodetabellene du er interessert i. 
         Innholder en liste over alle kodetabellene
     -   Kodetabell(): Hvert enkelt regneark, inneholder en liste over alle 
@@ -17,24 +13,15 @@ Objekter:
     -   Balisegruppe(): Den enkelte bgruppe, inneholder en liste over alle 
         balisene i gruppa
     -   Balise(): En enkelt balise
-    -   PD_table: En klasse for å printe ufullstendig informasjon i konsoll. 
-        Hovedsaklig for debugging.
     
 """
 
-import os
 import re
-
-import pandas as pd
 import xlrd
 
-from atsim_func import col_name
-
-
-"""
-Klasser
-
-"""
+###########
+# Klasser #
+###########
 
 class Baliseoversikt:
     def __init__(self):
@@ -43,6 +30,217 @@ class Baliseoversikt:
     def ny_mappe(self, folder_path):
         for file in self.__getXLSfileList(folder_path):
             self.alle_ktab.append(Kodetabell(file))
+    
+    def makeSQL(self, databaseName):
+        import sqlite3
+
+        # lager database-object
+        # conn = sqlite3.connect(":memory:") # :memory: i RAM // 'filnavn.db' for fil
+        conn = sqlite3.connect(databaseName) #
+        conn.execute("PRAGMA foreign_keys = ON")
+        c = conn.cursor()
+
+
+        # lager tabeller
+        c.execute('''
+            CREATE TABLE ktab(
+                ktabID INTEGER,
+                type,
+                docNr,
+                filePath,
+                PRIMARY KEY(ktabID ASC)
+                );
+            ''')
+        
+        c.execute('''
+            CREATE TABLE baliseGroup(
+                bgID INTEGER,
+                ktabID INTEGER,
+                baliseType TEXT,
+                id1 TEXT,
+                id2 TEXT,
+                km,
+                retning,
+                simulationSegment,
+                ktabFirstRow,
+                ktabLastRow,
+                PRIMARY KEY(bgID ASC),
+                FOREIGN KEY(ktabID) REFERENCES ktab(ktabID)
+                );
+            ''')
+        
+        c.execute('''
+            CREATE TABLE baliseState(
+                bsID INTEGER,
+                bgID INTEGER,
+                route,
+                signalMain,
+                signalDistant,
+                signalPre,
+                mainSpeed,
+                distantSpeed,
+                bDistance,
+                pDistance,
+                gradient,
+                PX, PY, PZ,
+                AX, AY, AZ,
+                BX, BY, BZ,
+                CX, CY, CZ,
+                PRIMARY KEY(bsID ASC),
+                FOREIGN KEY(bgID) REFERENCES baliseGroup(bgID)
+                );
+            ''')
+
+        # c.execute('''
+        #     CREATE TABLE baliseTelegram(
+        #         telegramID INTEGER,
+        #         bsID INTEGER,
+        #         baliseID INTEGER,
+        #         x,
+        #         y,
+        #         z,
+        #         PRIMARY KEY(telegramID ASC),
+        #         FOREIGN KEY(bsID) REFERENCES baliseState(bsID),
+        #         FOREIGN KEY(baliseID) REFERENCES balise(baliseID)
+        #         );
+        #     ''')
+        
+        c.execute('''
+            CREATE TABLE balise(
+                baliseID INTEGER,
+                bgID INTEGER,
+                km,
+                rank,
+                PRIMARY KEY(baliseID ASC),
+                FOREIGN KEY(bgID) REFERENCES baliseState(bsID)
+                );
+            ''')
+        
+        c.execute('''
+            CREATE TABLE encoder(
+                encoderID INTEGER,
+                bgID INTEGER,
+                name,
+                voltage,
+                PRIMARY KEY(encoderID ASC),
+                FOREIGN KEY(bgID) REFERENCES baliseGroup(bgID)
+                );
+            ''')
+        
+        # touple lists for input into database
+        ktabList = []
+        baliseGroupList = []
+        baliseStateList = []
+        baliseList = []
+        encoderList = []
+        telegramList = []
+
+        # primary key iterators
+        bgID = 0
+        bsID = 0
+        baliseID = 0
+        encoderID = 0
+        telegramID = 0
+
+        # fetch data from objects
+        for ktabID, ktab in enumerate(self.alle_ktab):
+            for baliseGroup in ktab.balise_group_obj_list:
+                
+                # write baliseGroup touple
+                baliseGroupList.append((
+                    bgID, # primary key
+                    ktabID, # foreign key
+                    baliseGroup.sign_type, # baliseType,
+                    baliseGroup.id1, # id1
+                    baliseGroup.id2, # id2
+                    baliseGroup.km, # km
+                    baliseGroup.ktab_retning, # retning
+                    baliseGroup.sim_segment, # simulationSegment
+                    baliseGroup.first_row, # ktabFirstRow
+                    baliseGroup.last_row # ktabLastRow,
+                    ))
+
+                # write state touple
+                for stateDict in baliseGroup.tilstander:
+                    baliseStateList.append((
+                        bsID, # bsID INTEGER
+                        bgID, # bgID
+                        stateDict["togvei"], # route
+                        stateDict["H"], # signalMain
+                        stateDict["F/H"], # signalDistant
+                        stateDict["F"], # signalPre
+                        stateDict["kjor"], # mainSpeed
+                        stateDict["vent"], # distantSpeed
+                        stateDict["b-avstand"], # bDistance
+                        stateDict["p-avstand"], # pDistance
+                        stateDict["fall"], # gradient
+                        stateDict["PX"], stateDict["PY"], stateDict["PZ"], 
+                        stateDict["AX"], stateDict["AY"], stateDict["AZ"], 
+                        stateDict["BX"], stateDict["BY"], stateDict["BZ"], 
+                        stateDict["CX"], stateDict["CY"], stateDict["CZ"], 
+                        ))
+                    
+                    #     telegramList.append((
+                    #         telegramID, # telegramID 
+                    #         bsID, # bsID 
+                    #          # baliseID 
+                    #         stateDict["fall"], # x
+                    #         stateDict["fall"], # y
+                    #         stateDict["fall"], # z
+                    #     ))
+                    bsID += 1
+                    telegramID += 1
+                # do per state loop end
+
+                    
+                # write balise touple
+                for balise in baliseGroup.baliser:       
+                    baliseList.append((
+                        baliseID, # baliseID INTEGER,
+                        bgID, # bgID,
+                        balise.km, # km
+                        balise.rang
+                        ))
+                    baliseID += 1
+
+                for encoder in baliseGroup.kodere:
+                    # write encouder touple
+                    encoderList.append((
+                        encoderID, # primary key,
+                        bgID, # foreign key,
+                        encoder, # name,
+                        None # voltage
+                        ))
+                    encoderID += 1                
+                
+                bgID += 1
+            # do per baliseGroup loop end
+            
+            # write ktab touple
+            ktabList.append((
+                int(ktabID), # primary key
+                None, # type
+                str(ktab.balise_group_obj_list[0].s_nr), # docNr
+                str(ktab.filepath) # filePath
+                ))  
+
+        # Skriver objekter over til database
+        c.executemany("INSERT INTO ktab VALUES ({})" .format("?," * (len(ktabList[0])-1) + "?"), ktabList)
+        c.executemany("INSERT INTO baliseGroup VALUES ({})" .format("?," * (len(baliseGroupList[0])-1) + "?"), baliseGroupList)
+        c.executemany("INSERT INTO baliseState VALUES ({})" .format("?," * (len(baliseStateList[0])-1) + "?"), baliseStateList)
+        c.executemany("INSERT INTO balise VALUES ({})" .format("?," * (len(baliseList[0])-1) + "?"), baliseList)
+        if len(encoderList) < 0:
+            c.executemany("INSERT INTO encoder VALUES ({})" .format("?," * (len(encoderList[0])-1) + "?"), encoderList)
+
+        # Output test
+        # c.execute("SELECT id2 FROM baliseGroup WHERE retning='A'")
+        # c.execute("SELECT * FROM balise")
+        # print(c.fetchall())
+        # c.execute("SELECT * FROM encoder")
+        # print(c.fetchall())
+
+        conn.commit()
+        conn.close()
             
     # hvordan oversikten printes
     def __str__(self):
@@ -52,6 +250,7 @@ class Baliseoversikt:
 
     # Finner alle .xls filer i angitt mappe
     def __getXLSfileList(self, folder_path):
+        import os
         xls_files = []
         (_, _, filenames) = next(os.walk(folder_path))
     
@@ -91,7 +290,7 @@ class Kodetabell:
         self.__les_kodetabell()
     
     def __les_kodetabell(self):
-        print(self.filepath)      
+        print(self.filepath)
         self.wbook = xlrd.open_workbook(self.filepath) # åpner excel workbook
         self.wb_sheet = self.wbook.sheet_by_index(0) # aktiverer sheet nr 0
         
@@ -100,7 +299,7 @@ class Kodetabell:
         for bgruppe in self.balise_group_obj_list:
             bgruppe = self.__definer_tilstander(bgruppe)
             bgruppe.kodere = self.__tell_kodere(bgruppe)
-#            print(bgruppe.id2, "\n", bgruppe.tilstander) # kun for debugging. printer output
+            # print(bgruppe.id2, "\n", bgruppe.tilstander) # kun for debugging. printer output
     
     
     # søker etter balisegrupper i kodetabellen
@@ -140,22 +339,22 @@ class Kodetabell:
         tilstand_list = []
         row_span = group_obj.last_row - group_obj.first_row + 1
         for row in range(row_span):            
-            tilstand_linje = []
+            tilstand_linje = {}
             for key in kolonne_dict:
                 # print(row, key, kolonne_dict[key][row]) # debugging
-                tilstand_linje.append({key : kolonne_dict[key][row]})
+                # tilstand_linje.append({key : kolonne_dict[key][row]})
+                tilstand_linje[key] = kolonne_dict[key][row]
             togvei_celle = self.wb_sheet.cell_value(
                     group_obj.first_row + row,
                     col_name("CB")
                     )
             
             # kopier over eventuelt innhold fra celle med togvei info
-            if togvei_celle != "":                
-                tilstand_linje.append({"togvei" : self.wb_sheet.cell_value(
-                        group_obj.first_row + row,
-                        col_name("CB")
-                        )})
-            
+            if togvei_celle != "":
+                tilstand_linje["togvei"] = togvei_celle
+            else:
+                tilstand_linje["togvei"] = None
+
             tilstand_list.append(tilstand_linje)
         group_obj.tilstander = tilstand_list
         
@@ -227,7 +426,8 @@ class Kodetabell:
             
         
     # leser en kolonne fra top til bunn og kopierer innhold
-    # returner liste dersom normal, returner None dersom kolonna er tom
+    # returner liste dersom normal
+    # returner None-liste dersom kolonna er tom
     def __search_col(self, col, group_obj):
         
         row_code = []
@@ -237,8 +437,8 @@ class Kodetabell:
                     self.wb_sheet.cell_value(row, col) # les kode fra celle
                     )
         else: # hvis ikke innhold
-            # row_code.append(None) # returner liste med None per rad
-            return None # returner None i stedet for en liste
+            row_code.append(None) # returner liste med None per rad
+            # return None # returner None i stedet for en liste
         
         if group_obj.first_row == group_obj.last_row:
             return self.__make_int(row_code)
@@ -281,24 +481,25 @@ class Kodetabell:
     
     # fjerner rusk fra KM og returnerer en int
     def __clean_KM(self, KM_str):
+        
         from re import findall
-        KM_str = str(KM_str)
-        if KM_str.isdigit():
-            return KM_str
-        else:
-            try:
-                KM_str = "".join(findall("[0-9]", KM_str))
+        # if KM_str.isdigit():
+        #     if KM_str.is_integer():
+        #     return KM_str
+        #     return int(KM_str)
+        if type(KM_str) is float:
+            if KM_str.is_integer():
                 return int(KM_str)
-            except:
-                print(KM_str)
-                print(findall("[0-9]", KM_str))
-                return -1.0
-    
-    # hvordan arket printes
-    def __str__(self):
-        balisegrupper_df = PD_table(self.balise_group_obj_list)
-        print(balisegrupper_df.balise_df)
-        return ""
+        if type(KM_str) is int:
+            return int(KM_str)
+        KM_str = str(KM_str)
+        try:
+            KM_str = "".join(findall("[0-9]", KM_str))
+            return int(KM_str)
+        except:
+            print(KM_str)
+            print(findall("[0-9]", KM_str))
+            return -1.0
 
 
 class Balisegruppe:
@@ -357,6 +558,7 @@ class Balisegruppe:
         self_str = "{}\t{} {}\t{}\t" .format(self.sign_type, self.id1, self.id2, self.km)
         return self_str
 
+
 class Balise:
     def __init__(self, rang, x_reg, y_reg, z_reg):
         self.rang = rang # P, A, B, C eller N-balise
@@ -366,17 +568,6 @@ class Balise:
         self.km = 0
         
     def __str__(self):
-#        line_1 = "{0}X\t{0}Y\t{0}Z" .format(
-#                self.rang
-#                )
-#        line_2 = "{1}\t{2}\t{3}" .format(
-#                self.rang, 
-#                self.x_reg, 
-#                self.y_reg, 
-#                self.z_reg
-#                )
-#        final_str = line_1 + "\n" + line_2
-#        return final_str
         return ("{0}X: {1}\t{0}Y: {2}\t{0}Z: {3}" .format(
                 self.rang, 
                 self.x_reg, 
@@ -384,47 +575,9 @@ class Balise:
                 self.z_reg
                 ))    
 
-"""
-# overflødig?
-class Tilstand: # beskriver hver enkelt tilstand definert i kodetabell (en enkelt linje)
-    def __init__(self, koding):
-        self.signal_h = None
-        self.signal_f = None
-        self.signal_p = None
-        self.hast_k = None
-        self.hast_v = None
-        self.p_avstand = None
-        self.b_avstand = None
-        self.fall = None
-        self.koding = koding     
-        self.baliser = []
-        self.togvei_tekst = None
-        
-#        self.baliser_posisjon = {
-#                "P" : 0,
-#                "A" : 3, 
-#                "B" : 6, 
-#                "C" : 9,
-#                "N" : 12}
-#        
-#        for rang in self.baliser_posisjon:
-#            self.__definer_balise(rang)
-#        
-#        def __definer_balise(self, rang):
-#            self.baliser.append(Balise(
-#                    rang,
-#                    koding[self.baliser_posisjon[rang]],
-#                    koding[self.baliser_posisjon[rang+1]],
-#                    koding[self.baliser_posisjon[rang+2]]
-#                    ))
-        
-        def __str__(self):
-            for kode in self.koding:
-                " ".join(kode)    
-"""
-
 
 class PD_table:
+    import pandas as pd
     def __init__(self, ktab_liste):
         self.ktab_liste = ktab_liste
         
@@ -452,75 +605,108 @@ class PD_table:
         print(self.balise_df)
 
 
-# Klasse  brukes for å skrive baliseinfo til XML
-class XMLbalise:
-    def __init__(self, retning, signType, id1, id2, rang, km, x_reg, y_reg, z_reg):
-        # print(km)
-        self.retning = str(retning)
-        self.signType = str(signType)
-        self.id1 = str(id1)
-        self.id2 = str(id2)
-        self.rang = str(rang) # P, A, B, C eller N-balise
-        self.km = float(km)
-        self.x_reg = int(x_reg) # X-ord
-        self.y_reg = int(y_reg)
-        self.z_reg = int(z_reg)
-    
-    def toXML(self, rootElement):
-        # import xml.etree.ElementTree as ET
-        import xml.etree.ElementTree as etree
 
-        # Lager skilt ved alle A-baliser
-        # if self.rang == "A":
-        #     baliseXML = etree.SubElement(rootElement, "IdBoardXML")
-        #     etree.SubElement(baliseXML, "IdXML").text = "defaultid" #self.id1 + self.id2 + self.rang
-        #     etree.SubElement(baliseXML, "StartVertexXML").text = "0.0, 0.0, " + str(self.km) # KM siste ledd
-        #     etree.SubElement(baliseXML, "OffsetVertexXML").text = "-3.0, 2.35, 0.0"
-        #     etree.SubElement(baliseXML, "DirectionXML").text = "1"
-        #     etree.SubElement(baliseXML, "FileNameXML").text = "no content"
-        #     etree.SubElement(baliseXML, "Line1XML").text = self.__addBlanks(self.signType)
-        #     etree.SubElement(baliseXML, "Line2XML").text = self.__addBlanks(self.id1)
-        #     etree.SubElement(baliseXML, "Line3XML").text = self.__addBlanks(self.id2)
-        #     etree.SubElement(baliseXML, "TypeXML").text = "no content"
+##############
+# Funksjoner #
+##############
 
-        # Lager liste over alle baliser
-        baliseXML = etree.SubElement(rootElement, "BaliseXML")
-        etree.SubElement(baliseXML, "IdXML").text = "defaultid"
-        etree.SubElement(baliseXML, "StartVertexXML").text = "0.0, 0.0, " + str(self.km) # KM siste ledd
-        etree.SubElement(baliseXML, "OffsetVertexXML").text = "0.0, 0.0, 0.0"
-        etree.SubElement(baliseXML, "DirectionXML").text = "1"
-        etree.SubElement(baliseXML, "FileNameXML").text = "balise.ac"
-        etree.SubElement(baliseXML, "KodeXML").text = "{0}, {1}, {2}" .format(
-            int(self.x_reg),
-            int(self.y_reg),
-            int(self.z_reg)
-        )
-            
-    def __str__(self):
-        return ("{0}\tX: {1}\tY: {2}\tZ: {3}" .format(
-            self.id1 + self.id2 + self.rang,
-            # self.id2,
-            self.x_reg, 
-            self.y_reg, 
-            self.z_reg
-            ))
+# vasker kodeord for å presenteres i excel    
+def rens_kodeord(kodeliste):
     
-    def __addBlanks(self, someStr):
-        blanks = "     "
-        if len(someStr) >= 5:
-            return someStr[:5]
-        else:
-            return blanks[:(5-len(someStr))] + someStr
-        
-if __name__ == "__main__":
+    kodeliste = set(kodeliste)
+    
+    if "-" in kodeliste:
+        kodeliste.remove("-")
+        if len(kodeliste) == 0:
+            return 1 # kode "1" dersom koding er vilkårlig
+    
+    if len(kodeliste) == 1:
+        return kodeliste.pop()
+    else: 
+        return ', '.join(map(str, kodeliste))
+
+# Lager excelark med baliser
+def skrivBaliseliste(ktabList, wbName):
+    import xlsxwriter
+
+    # Lager liste med dictionaries
+    baliseDictList = []
+    for ktab in ktabList.alle_ktab:
+        for bgruppe in ktab.balise_group_obj_list:
+            for balise in bgruppe.baliser:                
+                baliseDictList.append({
+                        "Retning": bgruppe.retning,
+                        "Sign./Type": bgruppe.sign_type,
+                        "Type": bgruppe.type,
+                        "ID_sted": bgruppe.id1, 
+                        "ID_type": bgruppe.id2, 
+                        "KM_prosjektert": balise.km,
+                        "KM_simulering": 0,
+                        # "KM_simulering": "=" + lagReferanse(len(baliseDictList)+2, 6-1), # rad og kolonne det skal refereres til
+                        # "Segment": evaluerSegment(balise, len(baliseDictList)+2, 7), # for å gjøre P, B, C til referanse
+                        "Segment": bgruppe.sim_segment,                        
+                        "Rang": balise.rang, 
+                        "X-ord": rens_kodeord(balise.x_reg), 
+                        "Y-ord": rens_kodeord(balise.y_reg), 
+                        "Z-ord": rens_kodeord(balise.z_reg),
+                        "Tegning": bgruppe.s_nr, 
+                        "Rad nr.": bgruppe.first_row + 1
+                        })
+
+    # Lage workbook-objekt
+    workbook  = xlsxwriter.Workbook(wbName)
+    baliseWorksheet = workbook.add_worksheet("Balisegrupper")
+
+    # Estetikk
+    # listContent = workbook.add_format({"align": "center"})
+    # tableHeader = workbook.add_format({"bold": True, "border": True, "align": "center"})
+
+    # Definer tabell
+    data = makeListOfLists(baliseDictList)
+    baliseWorksheet.add_table(0,0, len(data), len(data[0])-1, {
+        "data": data,
+        "columns": makeHeaders(baliseDictList)
+        # "header_row": True
+        })
+    
+    # Opprydding
+    workbook.close()
+    return
+
+# tar en bokstavkode, gir plass i alfabetet
+def alphabet_number(some_char):
+    return ord(some_char.upper())-64
+
+def col_name(letter_string):
+    sum = 0
+    for idx, c in enumerate(reversed(letter_string)):
+        sum += 26**idx*alphabet_number(c)
+    return sum - 1
+
+def makeListOfLists(DictList):
+    return [list(dictionary.values()) for dictionary in DictList]
+
+def makeHeaders(DictList):
+    return [{"header": "{}" .format(key)} for key in DictList[0]]
+
+
+if __name__ == "__main__":    
     # Mappe kodetabeller hentes i fra
-    mypath = r"C:\Users\weyhak\Desktop\temp\sand"
+    # mypath = r"C:\Users\weyhak\Desktop\temp\sand"
+    mypath = r"C:\Users\weyhak\Desktop\temp\Ny mappe (7)"
+    # dbName = "oslos_test.db"
+    dbName = ":memory:"
     
     # Leser kodetabeller
     alle_ark = Baliseoversikt()
     alle_ark.ny_mappe(mypath)
+    alle_ark.makeSQL(dbName)
 
-    balisegrupper_df = PD_table(alle_ark.alle_ktab)
-    print(balisegrupper_df.balise_df)
+    for ktab in alle_ark.alle_ktab:
+        for bg in ktab.balise_group_obj_list:
+            # print(bg.tilstander)
+            pass
+
+    # balisegrupper_df = PD_table(alle_ark.alle_ktab)
+    # print(balisegrupper_df.balise_df)
     # balisegrupper_df.balise_df.to_excel("oslo_s.xlsx")
-    

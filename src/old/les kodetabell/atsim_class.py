@@ -41,7 +41,7 @@ class Baliseoversikt:
         self.alle_ktab = []
         
     def ny_mappe(self, folder_path):
-        for file in self.__get_file_list(folder_path):
+        for file in self.__getXLSfileList(folder_path):
             self.alle_ktab.append(Kodetabell(file))
             
     # hvordan oversikten printes
@@ -51,7 +51,7 @@ class Baliseoversikt:
         return ""
 
     # Finner alle .xls filer i angitt mappe
-    def __get_file_list(self, folder_path):
+    def __getXLSfileList(self, folder_path):
         xls_files = []
         (_, _, filenames) = next(os.walk(folder_path))
     
@@ -109,8 +109,8 @@ class Kodetabell:
             # Lager balise objekt med __init__ info 
             if (self.wb_sheet.cell(group_row,1).ctype==0) or \
             (self.wb_sheet.cell(group_row,2).ctype==0 and
-             self.wb_sheet.cell(group_row,3).ctype==0 and
-             self.wb_sheet.cell(group_row,4).ctype==0):
+             self.wb_sheet.cell(group_row,3).ctype==0):# and
+            #  self.wb_sheet.cell(group_row,4).ctype==0):
                 continue
             else:
                 self.balise_group_obj_list.append(Balisegruppe(
@@ -142,7 +142,7 @@ class Kodetabell:
         for row in range(row_span):            
             tilstand_linje = []
             for key in kolonne_dict:
-#                print(row, key, kolonne_dict[key][row]) # debugging
+                # print(row, key, kolonne_dict[key][row]) # debugging
                 tilstand_linje.append({key : kolonne_dict[key][row]})
             togvei_celle = self.wb_sheet.cell_value(
                     group_obj.first_row + row,
@@ -171,11 +171,11 @@ class Kodetabell:
                 
         # sette km på balisene        
         if ("A" in group_obj.retning):
-            retning = 1
-        else:
             retning = -1
+        else:
+            retning = 1
             
-        offset = 8 # hvor mange meter fra hsign til første balise
+        offset = 6 # hvor mange meter fra hsign til første balise
         
         for balise in group_obj.baliser:
             if group_obj.type == "H.sign":
@@ -183,13 +183,17 @@ class Kodetabell:
                 for i, bokstav in enumerate(egen_gruppe[::-1]):
                     if bokstav == balise.rang:
                         balise.km = group_obj.km + (offset + 3 * i) * retning
-            else:                    
-                if balise.rang is "P":
-                    balise.km = group_obj.km - 3 * retning
-                else:
-                    for i, bokstav in enumerate(["A", "B", "C"]):
-                        if bokstav == balise.rang:
-                            balise.km = group_obj.km + 3 * i * retning
+            else:
+                egen_gruppe = [balise.rang for balise in group_obj.baliser]
+                for i, bokstav in enumerate(egen_gruppe[::-1]):
+                    if bokstav == balise.rang:
+                        balise.km = group_obj.km + 3 * i * retning                    
+                # if balise.rang is "P":
+                #     balise.km = group_obj.km - 3 * retning
+                # else:
+                #     for i, bokstav in enumerate(["A", "B", "C"]):
+                #         if bokstav == balise.rang:
+                #             balise.km = group_obj.km + 3 * i * retning
         # def slutt
         return group_obj
     
@@ -233,7 +237,7 @@ class Kodetabell:
                     self.wb_sheet.cell_value(row, col) # les kode fra celle
                     )
         else: # hvis ikke innhold
-#            row_code.append(None) # returner liste med None per rad
+            # row_code.append(None) # returner liste med None per rad
             return None # returner None i stedet for en liste
         
         if group_obj.first_row == group_obj.last_row:
@@ -277,11 +281,18 @@ class Kodetabell:
     
     # fjerner rusk fra KM og returnerer en int
     def __clean_KM(self, KM_str):
-        KM_str = KM_str.replace(",","").replace(".","")
+        from re import findall
+        KM_str = str(KM_str)
         if KM_str.isdigit():
-            return int(KM_str)
+            return KM_str
         else:
-            return -1.0
+            try:
+                KM_str = "".join(findall("[0-9]", KM_str))
+                return int(KM_str)
+            except:
+                print(KM_str)
+                print(findall("[0-9]", KM_str))
+                return -1.0
     
     # hvordan arket printes
     def __str__(self):
@@ -311,11 +322,14 @@ class Balisegruppe:
         # setter retning avhengig av om id2 er odde er partall
     def finn_retning(self):
         m = re.match("\d+", self.id2[::-1])
-        nr = int(m.group(0)[::-1])
-        if nr % 2 == 0:
-            self.retning = "B"
-        else:
-            self.retning = "A"            
+        try:
+            nr = int(m.group(0)[::-1])
+            if nr % 2 == 0:
+                self.retning = "B"
+            else:
+                self.retning = "A"
+        except:
+            self.retning = "?"
 
     # klassifiserer etter type balisegruppe        
     def finn_type(self):
@@ -325,9 +339,10 @@ class Balisegruppe:
                 "D.sign": ["m", "o", "s", "y", "æ", "å", "l", "n", "p", "t", "x", "ø"],
                 "F.sign": ["F"],
                 "FF": ["Z"],
-                "Rep.": ["R", "U", "V", "W"],
+                # "Rep.": ["R", "U", "V", "W"],
+                "Rep.": ["R", "U", "W"], # V er for SVG
                 "L": ["L"],
-                "SVG/RVG": ["V"],
+                "SVG/RVG": ["V", "v"],
                 "SH": ["S"],
                 "H/H(K1)/H(K2)": ["H"],
                 "ERH/EH/SEH": ["E"],
@@ -435,6 +450,67 @@ class PD_table:
         
     def print_df(self):
         print(self.balise_df)
+
+
+# Klasse  brukes for å skrive baliseinfo til XML
+class XMLbalise:
+    def __init__(self, retning, signType, id1, id2, rang, km, x_reg, y_reg, z_reg):
+        # print(km)
+        self.retning = str(retning)
+        self.signType = str(signType)
+        self.id1 = str(id1)
+        self.id2 = str(id2)
+        self.rang = str(rang) # P, A, B, C eller N-balise
+        self.km = float(km)
+        self.x_reg = int(x_reg) # X-ord
+        self.y_reg = int(y_reg)
+        self.z_reg = int(z_reg)
+    
+    def toXML(self, rootElement):
+        # import xml.etree.ElementTree as ET
+        import xml.etree.ElementTree as etree
+
+        # Lager skilt ved alle A-baliser
+        # if self.rang == "A":
+        #     baliseXML = etree.SubElement(rootElement, "IdBoardXML")
+        #     etree.SubElement(baliseXML, "IdXML").text = "defaultid" #self.id1 + self.id2 + self.rang
+        #     etree.SubElement(baliseXML, "StartVertexXML").text = "0.0, 0.0, " + str(self.km) # KM siste ledd
+        #     etree.SubElement(baliseXML, "OffsetVertexXML").text = "-3.0, 2.35, 0.0"
+        #     etree.SubElement(baliseXML, "DirectionXML").text = "1"
+        #     etree.SubElement(baliseXML, "FileNameXML").text = "no content"
+        #     etree.SubElement(baliseXML, "Line1XML").text = self.__addBlanks(self.signType)
+        #     etree.SubElement(baliseXML, "Line2XML").text = self.__addBlanks(self.id1)
+        #     etree.SubElement(baliseXML, "Line3XML").text = self.__addBlanks(self.id2)
+        #     etree.SubElement(baliseXML, "TypeXML").text = "no content"
+
+        # Lager liste over alle baliser
+        baliseXML = etree.SubElement(rootElement, "BaliseXML")
+        etree.SubElement(baliseXML, "IdXML").text = "defaultid"
+        etree.SubElement(baliseXML, "StartVertexXML").text = "0.0, 0.0, " + str(self.km) # KM siste ledd
+        etree.SubElement(baliseXML, "OffsetVertexXML").text = "0.0, 0.0, 0.0"
+        etree.SubElement(baliseXML, "DirectionXML").text = "1"
+        etree.SubElement(baliseXML, "FileNameXML").text = "balise.ac"
+        etree.SubElement(baliseXML, "KodeXML").text = "{0}, {1}, {2}" .format(
+            int(self.x_reg),
+            int(self.y_reg),
+            int(self.z_reg)
+        )
+            
+    def __str__(self):
+        return ("{0}\tX: {1}\tY: {2}\tZ: {3}" .format(
+            self.id1 + self.id2 + self.rang,
+            # self.id2,
+            self.x_reg, 
+            self.y_reg, 
+            self.z_reg
+            ))
+    
+    def __addBlanks(self, someStr):
+        blanks = "     "
+        if len(someStr) >= 5:
+            return someStr[:5]
+        else:
+            return blanks[:(5-len(someStr))] + someStr
         
 if __name__ == "__main__":
     # Mappe kodetabeller hentes i fra
@@ -443,4 +519,9 @@ if __name__ == "__main__":
     # Leser kodetabeller
     alle_ark = Baliseoversikt()
     alle_ark.ny_mappe(mypath)
-    print(alle_ark)
+    alle_ark.
+
+    # balisegrupper_df = PD_table(alle_ark.alle_ktab)
+    # print(balisegrupper_df.balise_df)
+    # balisegrupper_df.balise_df.to_excel("oslo_s.xlsx")
+    
