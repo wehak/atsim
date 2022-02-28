@@ -1,12 +1,10 @@
 def createXML(excelFilename):
     import xml.etree.ElementTree as etree
-    import xlrd
-    
+    from openpyxl import load_workbook
+
+
     # Navn på XML-fil som skal genereres
     xmlFilename = excelFilename[:-4] + "xml"
-
-    # Sti til excelark med baliser
-    # excelFilename = "lysaker1.xlsx"
 
     # Navn på kolonner som skal leses inn fra excelark
     searchPatterns = [
@@ -22,17 +20,17 @@ def createXML(excelFilename):
         ]
 
 
-    # Åpnder excelark
-    wb = xlrd.open_workbook(excelFilename) # åpner excel workbook
-    ws = wb.sheet_by_index(0) # aktiverer sheet nr 0
+    # Åpner excelark
+    wb = load_workbook(excelFilename, data_only=True)
+    ws = wb[wb.sheetnames[0]]
 
     # Finner colonne med relevant data
     antallPatterns = len(searchPatterns)
     headerColumnDict = {}
-    for i, header in enumerate(ws.row_values(0)):
+    for i, cell in enumerate(ws[1]):
         for j, pattern in enumerate(searchPatterns):
-            if header == pattern:
-                headerColumnDict.update({header:i})
+            if cell.value == pattern:
+                headerColumnDict.update({cell.value:i+1})
                 searchPatterns.pop(j)
                 
     # Sjekker om alt er funnet
@@ -42,18 +40,18 @@ def createXML(excelFilename):
         print(excelFilename, ": Mangler verdier")
 
     baliser = []
-    for i in range(1, ws.nrows):
+    for i in range(2, ws.max_row):
         baliser.append(
             XMLbalise(
-                ws.cell_value(i, headerColumnDict["Retning"]),
-                ws.cell_value(i, headerColumnDict["Sign./Type"]),
-                ws.cell_value(i, headerColumnDict["ID_sted"]),
-                ws.cell_value(i, headerColumnDict["ID_type"]),
-                ws.cell_value(i, headerColumnDict["Rang"]),
-                ws.cell_value(i, headerColumnDict["KM_simulering"]),
-                ws.cell_value(i, headerColumnDict["X-ord"]),
-                ws.cell_value(i, headerColumnDict["Y-ord"]),
-                ws.cell_value(i, headerColumnDict["Z-ord"])
+                ws.cell(i, headerColumnDict["Retning"]).value,
+                ws.cell(i, headerColumnDict["Sign./Type"]).value,
+                ws.cell(i, headerColumnDict["ID_sted"]).value,
+                ws.cell(i, headerColumnDict["ID_type"]).value,
+                ws.cell(i, headerColumnDict["Rang"]).value,
+                ws.cell(i, headerColumnDict["KM_simulering"]).value,
+                ws.cell(i, headerColumnDict["X-ord"]).value,
+                ws.cell(i, headerColumnDict["Y-ord"]).value,
+                ws.cell(i, headerColumnDict["Z-ord"]).value
             )
         )
 
@@ -105,22 +103,21 @@ class XMLbalise:
         self.lagSkilter = True
     
     def toXML(self, rootElement):
-        # import xml.etree.ElementTree as ET
         import xml.etree.ElementTree as etree
 
         # Lager skilt ved alle A-baliser
-        if self.lagSkilter == True:
-            if self.rang == "A":
-                baliseXML = etree.SubElement(rootElement, "IdBoardXML")
-                etree.SubElement(baliseXML, "IdXML").text = "defaultid" #self.id1 + self.id2 + self.rang
-                etree.SubElement(baliseXML, "StartVertexXML").text = "0.0, 0.0, " + str(self.km) # KM siste ledd
-                etree.SubElement(baliseXML, "OffsetVertexXML").text = "-3.0, 2.35, 0.0"
-                etree.SubElement(baliseXML, "DirectionXML").text = self.__direction(self.retning)
-                etree.SubElement(baliseXML, "FileNameXML").text = "no content"
-                etree.SubElement(baliseXML, "Line1XML").text = self.__addBlanksKM(self.km)
-                etree.SubElement(baliseXML, "Line2XML").text = self.__addBlanks(self.id1)
-                etree.SubElement(baliseXML, "Line3XML").text = self.__addBlanks(self.id2)
-                etree.SubElement(baliseXML, "TypeXML").text = "no content"
+        # if self.lagSkilter == True:
+            # if self.rang == "A":
+            #     baliseXML = etree.SubElement(rootElement, "IdBoardXML")
+            #     etree.SubElement(baliseXML, "IdXML").text = "defaultid" #self.id1 + self.id2 + self.rang
+            #     etree.SubElement(baliseXML, "StartVertexXML").text = "0.0, 0.0, " + str(self.km) # KM siste ledd
+            #     etree.SubElement(baliseXML, "OffsetVertexXML").text = "-3.0, 2.35, 0.0"
+            #     etree.SubElement(baliseXML, "DirectionXML").text = self.__direction(self.retning)
+            #     etree.SubElement(baliseXML, "FileNameXML").text = "no content"
+            #     etree.SubElement(baliseXML, "Line1XML").text = self.__addBlanksKM(self.km)
+            #     etree.SubElement(baliseXML, "Line2XML").text = self.__addBlanks(self.id1)
+            #     etree.SubElement(baliseXML, "Line3XML").text = self.__addBlanks(self.id2)
+            #     etree.SubElement(baliseXML, "TypeXML").text = "no content"
 
         # Lager liste over alle baliser
         baliseXML = etree.SubElement(rootElement, "BaliseXML")
@@ -162,9 +159,9 @@ class XMLbalise:
 
     # gir skilt riktig retning
     def __direction(self, AorB):
-        if AorB is "A":
+        if AorB == "A":
             return str(1)
-        elif AorB is "B":
+        elif AorB == "B":
             return str(-1)
         else:
             print("Error: ", AorB)

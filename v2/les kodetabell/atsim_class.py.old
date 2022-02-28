@@ -24,6 +24,7 @@ Objekter:
 
 import os
 import re
+from pathlib import Path
 
 import pandas as pd
 import xlrd
@@ -52,13 +53,19 @@ class Baliseoversikt:
 
     # Finner alle .xls filer i angitt mappe
     def __getXLSfileList(self, folder_path):
-        xls_files = []
-        (_, _, filenames) = next(os.walk(folder_path))
+        # xls_files = []
+        # (_, _, filenames) = next(os.walk(folder_path))
     
-        for file in filenames:
-            if file.lower().endswith(".xls"):
-                xls_files.append(folder_path + "\\" + file)
-        print("Antall .XLS-filer funnet: {}" .format(len(xls_files)))
+        # for file in filenames:
+        #     if file.lower().endswith(".xls"):
+        #         xls_files.append(folder_path + "\\" + file)
+        folder_path = Path(folder_path)
+        xls_files = list(folder_path.rglob("*.xls")) + list(folder_path.rglob("*.XLS"))
+        if len(xls_files) == 0:
+            print("Ingen .XLS-filer funnet i \"{folder_path}\"")
+            exit()
+        else:
+            print("Antall .XLS-filer funnet: {}" .format(len(xls_files)))
         return xls_files
     
 
@@ -514,7 +521,7 @@ class XMLbalise:
         
 if __name__ == "__main__":
     # Mappe kodetabeller hentes i fra
-    mypath = r"C:\Users\weyhak\Desktop\temp\sand"
+    mypath = r"C:\Users\weyhak\Desktop\temp\fatc\1_ATC kodetabeller"
     
     # Leser kodetabeller
     alle_ark = Baliseoversikt()

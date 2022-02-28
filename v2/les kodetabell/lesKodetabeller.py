@@ -16,7 +16,7 @@ from kodetabellHelpers import Baliseoversikt, skrivBaliseliste
 
 
 # Mappe hvor kodetabeller finnes
-sti_til_kodetabeller = r"C:\Users\weyhak\Desktop\temp\sand"
+sti_til_kodetabeller = r"C:\Users\weyhak\Desktop\grorud sim 22"
 
 # Leser kodetabeller
 alle_ark = Baliseoversikt()

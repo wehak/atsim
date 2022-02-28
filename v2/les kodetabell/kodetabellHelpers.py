@@ -20,6 +20,7 @@ Objekter:
     
 """
 
+from pathlib import Path
 import re
 import xlrd
 
@@ -43,15 +44,23 @@ class Baliseoversikt:
 
     # Finner alle .xls filer i angitt mappe
     def __getXLSfileList(self, folder_path):
-        import os
-        xls_files = []
-        (_, _, filenames) = next(os.walk(folder_path))
+        # import os
+        # xls_files = []
+        # (_, _, filenames) = next(os.walk(folder_path))
     
-        for file in filenames:
-            if file.lower().endswith(".xls"):
-                xls_files.append(folder_path + "\\" + file)
-        print("Antall .XLS-filer funnet: {}" .format(len(xls_files)))
-        return xls_files
+        # for file in filenames:
+        #     if file.lower().endswith(".xls"):
+        #         xls_files.append(folder_path + "\\" + file)
+
+        xls_files = list(Path(folder_path).rglob("*.xls"))
+
+        # sjekker om filer er funnet, slutter hvis ikke
+        if len(xls_files) == 0:
+            print(f"Ingen .XLS-filer funnet i '{folder_path}'")
+            exit()
+        else:
+            print("Antall .XLS-filer funnet: {}" .format(len(xls_files)))
+            return xls_files
     
 
 class Kodetabell:

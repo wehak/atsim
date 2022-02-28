@@ -15,7 +15,7 @@ from atsim_func import skrivBaliseliste
 
 
 # Mappe hvor kodetabeller finnes
-sti_til_kodetabeller = r"C:\Users\weyhak\Desktop\temp\sand"
+sti_til_kodetabeller = r"C:\Users\weyhak\Desktop\temp\fatc\1_ATC kodetabeller"
 
 # Leser kodetabeller
 alle_ark = Baliseoversikt()
